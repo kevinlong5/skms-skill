@@ -1,0 +1,485 @@
+{
+  "skill_name": "skms",
+  "suite": "workflow_conformance",
+  "purpose": "Concrete workflow-conformance evals for the five approved SKMS task families, with event study kept as an indicator-construction subfamily.",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "raw-import-batch-consolidation",
+      "family": "raw_vendor_import",
+      "prompt": "i have 12 yearly CSMAR daily return exports in <DATA_ROOT>/CSMAR/股票收益率/raw/2012_2023/. each workbook has chinese headers in row 1, variable codes in row 2, and the stock id column alternates between Symbol and Scode. trade dates are YMD text. i need a stata package that imports every file, cleans headers, normalizes the firm id to Stkcd, converts dates safely, appends the same-schema files, and leaves one consolidated returns panel ready for later panel work.",
+      "expected_output": "A shared-basename `.do + .log + _summary.md` evidence spine that performs raw import in the order import/header cleanup -> Stkcd normalization -> safe date conversion -> append same-schema files -> duplicates drop/save, and explains why append is the correct consolidation method.",
+      "files": [],
+      "expectations": [
+        "Routes the task to raw vendor import rather than integration, regression, or descriptive reporting.",
+        "Uses batch import plus append for the yearly files because they share the same schema.",
+        "Normalizes Symbol/Scode to the canonical `Stkcd` field before panel preparation.",
+        "Converts the raw trade-date text with `date()` and formats the parsed date before extracting `year`.",
+        "Creates one consolidated processed returns dataset instead of leaving the output fragmented by year."
+      ],
+      "sop_order": [
+        {
+          "position": 1,
+          "step": "Import files and clean header rows",
+          "required_signals": [
+            "`import excel ..., firstrow` or equivalent raw vendor import",
+            "explicit header/label cleanup such as `drop in 1/2` or an equivalent first-row label extraction loop"
+          ],
+          "anti_signals": [
+            "`xtset` before import cleanup",
+            "`reghdfe` before any processed dataset exists"
+          ]
+        },
+        {
+          "position": 2,
+          "step": "Normalize identifiers to canonical Stkcd",
+          "required_signals": [
+            "rename `Symbol`, `symbol`, or `Scode` to `Stkcd`",
+            "type harmonization such as `destring Stkcd` or a documented numeric/string crosswalk"
+          ],
+          "anti_signals": [
+            "joining later data on mixed `Symbol`/`Scode`/`stkcd` names",
+            "leaving the stock identifier unnormalized"
+          ]
+        },
+        {
+          "position": 3,
+          "step": "Convert dates safely before deriving time fields",
+          "required_signals": [
+            "`gen date = date(raw_date, \"YMD\")` or an equivalent explicit conversion",
+            "`format date %tdCCYY-NN-DD` or equivalent display format",
+            "`gen year = year(date)` after the parsed date exists"
+          ],
+          "anti_signals": [
+            "extracting `year` from raw text before parsing",
+            "treating the raw date column as already safe without a conversion step"
+          ]
+        },
+        {
+          "position": 4,
+          "step": "Append same-schema yearly files into one master panel",
+          "required_signals": [
+            "`append using` or an equivalent same-schema consolidation loop",
+            "`duplicates drop` or an equivalent de-duplication check"
+          ],
+          "anti_signals": [
+            "frame workflow for the yearly slices themselves",
+            "`merge` used to stack same-schema time-split files"
+          ]
+        },
+        {
+          "position": 5,
+          "step": "Emit one consolidated handoff package",
+          "required_signals": [
+            "one `.do`, one `.log`, and one `.md` with a shared basename",
+            "a saved consolidated returns dataset referenced inside the `.do` and explained in the `.md`"
+          ],
+          "anti_signals": [
+            "per-year deliverables with no consolidated result",
+            "only a code snippet with no log or methodology note"
+          ]
+        }
+      ],
+      "forbidden_shortcuts": [
+        "Skip `Stkcd` normalization because the source column looks close enough.",
+        "Use `merge` or frames to combine the same-schema yearly return files.",
+        "Treat the raw YMD strings as analysis-ready dates without an explicit conversion and format check.",
+        "Stop after raw file cleaning without producing one consolidated output."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/data_patterns.md"
+      ]
+    },
+    {
+      "id": 2,
+      "eval_name": "frame-integration-multi-source-panel",
+      "family": "multi_source_integration",
+      "prompt": "i already cleaned four sources and now need one panel: CSMAR monthly returns, company basic info with industry codes, Acc financial statements, and a hand-collected csv of ESG scores. keys are stkcd/year but the types are inconsistent. please give me the stata workflow that chooses the right integration method, keeps each source isolated until linking, brings the variables into one consolidated panel, and leaves something i can regress on for 2010-2022.",
+      "expected_output": "A shared-basename package that chooses frame workflow for the 4 distinct sources, normalizes keys inside each source, uses `frlink`/`frget` to consolidate variables, documents why frame beats append or merge chains here, and saves one final analysis panel.",
+      "files": [],
+      "expectations": [
+        "Chooses frame workflow because the task has three or more distinct sources with repeated linking needs.",
+        "Normalizes the key fields before linking so `Stkcd` and `year` match across sources.",
+        "Uses `frlink`/`frget` or a clearly equivalent frame-based link-and-pull sequence.",
+        "Produces one consolidated panel as the integration output instead of leaving source-specific datasets only.",
+        "Includes merge/link diagnostics in the log or described workflow."
+      ],
+      "sop_order": [
+        {
+          "position": 1,
+          "step": "Create or switch into one frame per distinct source",
+          "required_signals": [
+            "`frame create` for the distinct sources or a clearly equivalent isolated-source pattern",
+            "source-specific cleanup before linking"
+          ],
+          "anti_signals": [
+            "immediate merge chain across all four sources in the default frame",
+            "append across heterogeneous variable sets"
+          ]
+        },
+        {
+          "position": 2,
+          "step": "Normalize keys within each source",
+          "required_signals": [
+            "harmonize `Stkcd` naming and type",
+            "ensure `year` exists as an integer alignment field"
+          ],
+          "anti_signals": [
+            "linking on mixed string/numeric keys without harmonization",
+            "linking on month-level data without first aligning the requested panel grain"
+          ]
+        },
+        {
+          "position": 3,
+          "step": "Link the sources from the main sample using frame operations",
+          "required_signals": [
+            "`frlink m:1` or `frlink 1:1` as justified by the source structure",
+            "`frget` for the requested variables"
+          ],
+          "anti_signals": [
+            "repeated `merge` chains used as the default for all four sources",
+            "keeping the data fragmented by source after linking"
+          ]
+        },
+        {
+          "position": 4,
+          "step": "Check link quality and duplicate structure",
+          "required_signals": [
+            "link or merge diagnostics such as link counts, duplicate checks, or unmatched-source discussion",
+            "sample-coverage explanation in the `.md`"
+          ],
+          "anti_signals": [
+            "no diagnostics at all",
+            "dropping unmatched observations without explanation"
+          ]
+        },
+        {
+          "position": 5,
+          "step": "Save a single analysis-ready panel and handoff package",
+          "required_signals": [
+            "one final consolidated panel saved for downstream analysis",
+            "one `.do`, one `.log`, and one `.md` with a shared basename"
+          ],
+          "anti_signals": [
+            "only source-level temp files",
+            "only a narrative recommendation with no executable output package"
+          ]
+        }
+      ],
+      "forbidden_shortcuts": [
+        "Default to a merge chain when the task clearly calls for frames.",
+        "Append the four heterogeneous sources together.",
+        "Link before normalizing key names or types.",
+        "Leave the output as separate source files without one consolidated panel."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/data_patterns.md"
+      ]
+    },
+    {
+      "id": 3,
+      "eval_name": "indicator-construction-financial-and-policy",
+      "family": "indicator_construction",
+      "subfamily": "financial_ratios_and_policy_dummies",
+      "prompt": "the merged firm-year sample is already built. i need the standard research variables next: leverage, roa, sales growth using lagged sales, log assets, a loss dummy, plus treat/post/did for a 2017 pilot-policy shock. please give me the stata package in the right order so the indicators are reproducible and the panel is still safe for later regressions.",
+      "expected_output": "A shared-basename package that keeps the task inside indicator construction, sets up any needed panel structure before lagged variables, constructs financial ratios and policy dummies in a documented sequence, validates the new variables, and saves an indicator-ready panel for later analysis.",
+      "files": [],
+      "expectations": [
+        "Keeps this in the indicator-construction family rather than jumping straight to regression output.",
+        "Establishes or checks panel structure before using lag operators for growth.",
+        "Constructs the requested ratios and policy dummies explicitly instead of describing them abstractly.",
+        "Documents variable definitions and validation in the `.md` file.",
+        "Saves one indicator-ready panel as the output of the workflow."
+      ],
+      "sop_order": [
+        {
+          "position": 1,
+          "step": "Load the merged sample and verify panel identifiers",
+          "required_signals": [
+            "load the existing merged panel",
+            "normalize/check the firm identifier and year fields before lagged calculations"
+          ],
+          "anti_signals": [
+            "running `reghdfe` in an indicator-only task",
+            "using lag operators without any panel declaration or explicit sort logic"
+          ]
+        },
+        {
+          "position": 2,
+          "step": "Declare the panel structure needed for lag-based variables",
+          "required_signals": [
+            "`xtset` or an equivalent panel-safe setup before `L.` references",
+            "discussion of duplicate or gap checks if lagged growth is required"
+          ],
+          "anti_signals": [
+            "`gen Growth = SALE / L.SALE` with no panel setup",
+            "lag logic that assumes the data are already sorted and unique without checking"
+          ]
+        },
+        {
+          "position": 3,
+          "step": "Construct the requested ratios and dummies",
+          "required_signals": [
+            "explicit code for leverage, ROA, growth, log assets, loss dummy, and Treat/Post/DID",
+            "clear handling of numerator/denominator variables"
+          ],
+          "anti_signals": [
+            "only high-level prose with no variable-construction code",
+            "event-study workflow treated as a separate top-level family"
+          ]
+        },
+        {
+          "position": 4,
+          "step": "Validate and save the enriched panel",
+          "required_signals": [
+            "basic validation such as summary stats, missing-value checks, or range checks for the constructed variables",
+            "save the indicator-ready panel and explain the new fields in the `.md`"
+          ],
+          "anti_signals": [
+            "constructed variables with no validation or save step",
+            "only returning a regression table path"
+          ]
+        }
+      ],
+      "forbidden_shortcuts": [
+        "Use lagged variables without panel setup or explicit ordering safeguards.",
+        "Skip variable-definition documentation for the constructed indicators.",
+        "Jump directly into regression commands when the request is still in indicator construction.",
+        "Treat event study as a separate top-level family instead of a subfamily here."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/analysis_patterns.md"
+      ]
+    },
+    {
+      "id": 4,
+      "eval_name": "indicator-construction-event-study-subfamily",
+      "family": "indicator_construction",
+      "subfamily": "event_study_car",
+      "prompt": "i'm doing a comment-letter event study. returns are daily CSMAR data, event dates are in a separate frame, and some event dates fall on weekends. i need abnormal returns from the market-adjusted model plus CAR(-2,+2) and CAR(-5,+5), then mean CAR and t-tests split by first-time versus follow-up letters. please keep it in the right SKMS workflow and make the non-trading-day logic explicit.",
+      "expected_output": "A shared-basename package that treats event study as an indicator-construction subfamily, links events to returns, handles non-trading days before CAR calculation, computes abnormal returns then CAR windows in order, and emits statistical output plus explanatory methodology.",
+      "files": [],
+      "expectations": [
+        "Classifies the task under indicator construction with `event_study` as a subfamily, not as a separate top-level workflow.",
+        "Performs event-date alignment before abnormal returns and CAR calculations.",
+        "Implements explicit non-trading-day handling instead of assuming event dates already trade.",
+        "Computes AR before CAR windows and runs the requested statistical summaries afterward.",
+        "Captures the event-study logic in a `.do + .log + _summary.md` evidence spine."
+      ],
+      "sop_order": [
+        {
+          "position": 1,
+          "step": "Load returns and link event dates",
+          "required_signals": [
+            "returns data loaded before CAR calculations",
+            "event dates brought in through frame linking or a clearly justified equivalent"
+          ],
+          "anti_signals": [
+            "computing CAR without event dates linked to returns",
+            "event-study routing described as a sixth top-level family"
+          ]
+        },
+        {
+          "position": 2,
+          "step": "Handle non-trading days explicitly",
+          "required_signals": [
+            "exact-match event marker plus fallback to the next trading day using a gap variable such as `Dif` and `MD`",
+            "an explicit tolerance rule for acceptable next-trading-day substitution"
+          ],
+          "anti_signals": [
+            "assuming weekend event dates line up directly with return dates",
+            "dropping non-trading-day events without comment"
+          ]
+        },
+        {
+          "position": 3,
+          "step": "Calculate abnormal returns before CAR windows",
+          "required_signals": [
+            "market-adjusted abnormal return step such as `ar = rstk - rmkt` or a justified market-model variant",
+            "CAR window code that references the already-built abnormal returns"
+          ],
+          "anti_signals": [
+            "direct CAR calculation from raw returns with no abnormal-return step",
+            "t-tests before CAR variables exist"
+          ]
+        },
+        {
+          "position": 4,
+          "step": "Run event-level statistics and package the result",
+          "required_signals": [
+            "mean CAR output and t-tests split by the requested grouping variable",
+            "one `.do`, one `.log`, and one `.md` with methodology and window definitions"
+          ],
+          "anti_signals": [
+            "only descriptive prose about event studies",
+            "no statistical output after CAR construction"
+          ]
+        }
+      ],
+      "forbidden_shortcuts": [
+        "Treat event study as a top-level family separate from indicator construction.",
+        "Skip non-trading-day handling when the prompt explicitly says weekends occur.",
+        "Compute CAR directly from raw returns with no abnormal-return step.",
+        "Return code without any statistical output or methodology note."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/analysis_patterns.md"
+      ]
+    },
+    {
+      "id": 5,
+      "eval_name": "regression-analysis-output-package",
+      "family": "regression_analysis",
+      "prompt": "the panel is ready and xtset-safe. please run the standard investment-on-cash-flow regressions for the paper: baseline, then add controls, then the full model with firm and year fixed effects and firm-clustered standard errors. winsorize the main continuous variables at 1/99 first, keep the diagnostics a reviewer would expect, and hand me one package i can rerun.",
+      "expected_output": "A shared-basename package that orders the regression workflow as winsorization/variable processing -> panel verification -> baseline/controls/full `reghdfe` sequence -> `outreg2` output accumulation, while preserving reviewer-facing diagnostics in the log and linking formal outputs from the summary.",
+      "files": [],
+      "expectations": [
+        "Uses the regression-analysis family and follows the documented multi-model sequence.",
+        "Winsorizes requested variables before the regressions.",
+        "Runs panel diagnostics such as `xtdescribe`, duplicate checks, or equivalent verification before estimation.",
+        "Uses `reghdfe` with fixed effects and clustered standard errors as requested.",
+        "Packages the result as `.do + .log + _summary.md`, with `outreg2` tables treated as formal outputs rather than the only deliverable."
+      ],
+      "sop_order": [
+        {
+          "position": 1,
+          "step": "Process analysis variables before estimation",
+          "required_signals": [
+            "`winsor2` or a justified equivalent before model execution",
+            "any needed logs or interactions created before regression"
+          ],
+          "anti_signals": [
+            "regressions run before the requested winsorization",
+            "only discussing winsorization without implementing it"
+          ]
+        },
+        {
+          "position": 2,
+          "step": "Verify panel structure and diagnostics",
+          "required_signals": [
+            "`xtset` confirmation or equivalent panel declaration context",
+            "diagnostics such as `xtdescribe`, `xtsum`, duplicate checks, or missing-key checks"
+          ],
+          "anti_signals": [
+            "no panel verification at all",
+            "estimating with clustered firm SEs while the firm identifier remains ambiguous"
+          ]
+        },
+        {
+          "position": 3,
+          "step": "Run the requested reghdfe model sequence",
+          "required_signals": [
+            "baseline model",
+            "controls model",
+            "full model with the requested fixed effects and clustering"
+          ],
+          "anti_signals": [
+            "one single specification when the prompt asks for three",
+            "`reg` used as the final default instead of `reghdfe`"
+          ]
+        },
+        {
+          "position": 4,
+          "step": "Export and document the results in a consolidated package",
+          "required_signals": [
+            "`outreg2` accumulation for the regression table",
+            "one `.do`, one `.log`, and one `.md` with model interpretation and rerun instructions"
+          ],
+          "anti_signals": [
+            "only `regression.doc` with no executable package",
+            "no `.log` evidence of diagnostics or model output"
+          ]
+        }
+      ],
+      "forbidden_shortcuts": [
+        "Skip the requested winsorization step.",
+        "Skip panel diagnostics because the user says the data are already ready.",
+        "Collapse the multi-model request into a single regression.",
+        "Treat `outreg2` output as the full deliverable instead of the unified package."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/analysis_patterns.md"
+      ]
+    },
+    {
+      "id": 6,
+      "eval_name": "descriptive-reporting-table1-correlation-figures",
+      "family": "descriptive_reporting",
+      "prompt": "i need table 1 for the paper from the final sample: full-sample and treatment/control summary stats for roa, leverage, size, investment, and cash flow; ttable2 balance tests; a correlation matrix with significance; and one exportable figure showing average roa by year. please give me the stata package in the usual skms order and keep the outputs publication-ready.",
+      "expected_output": "A shared-basename package that orders the descriptive workflow as sample/group checks -> `logout`/`tabstat` summaries -> `ttable2` balance tests -> correlation output -> graph export, with publication-ready formatting, a `.do + .log + _summary.md` evidence spine, and formal table/figure outputs.",
+      "files": [],
+      "expectations": [
+        "Uses the descriptive/statistical reporting family rather than drifting into full regression analysis.",
+        "Produces logout/tabstat summary statistics and ttable2 group comparisons.",
+        "Includes a correlation matrix with significance handling or an equivalent publication-oriented export.",
+        "Exports at least one figure with labels/titles suitable for paper use.",
+        "Packages the work as `.do + .log + _summary.md`, with `.xlsx` or `.png` outputs treated as formal outputs linked from the summary."
+      ],
+      "sop_order": [
+        {
+          "position": 1,
+          "step": "Confirm the final sample and grouping variables",
+          "required_signals": [
+            "load the final sample and identify the treatment/control grouping",
+            "basic sample checks before table generation"
+          ],
+          "anti_signals": [
+            "table commands with no identified grouping variable",
+            "jumping directly to graph export before core descriptive tables"
+          ]
+        },
+        {
+          "position": 2,
+          "step": "Generate summary-statistics tables",
+          "required_signals": [
+            "`logout` wrapped `tabstat` or a clearly equivalent export-oriented descriptive table",
+            "full-sample and by-group statistics for the named variables"
+          ],
+          "anti_signals": [
+            "plain `summarize` with no export path",
+            "omitting either the full-sample or by-group table when both are requested"
+          ]
+        },
+        {
+          "position": 3,
+          "step": "Run balance tests and correlation output",
+          "required_signals": [
+            "`ttable2` or equivalent difference-in-means testing",
+            "correlation matrix export with significance information"
+          ],
+          "anti_signals": [
+            "no balance tests",
+            "correlation mentioned but not actually generated"
+          ]
+        },
+        {
+          "position": 4,
+          "step": "Export a publication-ready figure and final package",
+          "required_signals": [
+            "a graph command with titles/labels and a `graph export` step",
+            "one `.do`, one `.log`, and one `.md` that summarize the descriptive findings"
+          ],
+          "anti_signals": [
+            "no figure export",
+            "only loose tables with no consolidated handoff package"
+          ]
+        }
+      ],
+      "forbidden_shortcuts": [
+        "Use plain `summarize` output as a substitute for exportable descriptive tables.",
+        "Skip `ttable2` or equivalent balance testing when treatment/control comparison is requested.",
+        "Mention a figure without actually exporting one.",
+        "Return only `.xlsx` or `.png` artifacts without the `.do + .log + _summary.md` evidence spine."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/analysis_patterns.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,224 @@
+{
+  "skill_name": "skms",
+  "suite": "failure_modes",
+  "purpose": "Explicit negative evals for the high-cost SKMS workflow mistakes surfaced in review: missed Stkcd normalization, wrong append/merge/frame choice, missing consolidated output, unsafe date conversion, and absent diagnostics.",
+  "evals": [
+    {
+      "id": 101,
+      "eval_name": "failure-stkcd-normalization-gap",
+      "mistake_category": "missed_stkcd_normalization",
+      "primary_family": "raw_vendor_import",
+      "prompt": "my raw files are a mess: one CSMAR export names the firm key Symbol, one manual csv uses stkcd as a zero-padded string, and a CNRDS file uses Scode as numeric text. i need one integrated stata workflow for later panel regressions. please clean the imports and combine them without losing firms whose leading zeros matter.",
+      "expected_output": "The workflow explicitly canonicalizes the identifier to `Stkcd`, harmonizes type before any join or panel declaration, and explains how leading-zero risk is handled instead of assuming the source ids already match.",
+      "files": [],
+      "expectations": [
+        "Renames source-specific identifier fields to the canonical `Stkcd` name before integration.",
+        "Harmonizes identifier type with an explicit numeric/string strategy before linking or `xtset`.",
+        "Mentions or implements a leading-zero-safe crosswalk when the prompt warns that padding matters.",
+        "Never joins or declares the panel on mixed raw identifier fields."
+      ],
+      "failure_signals": [
+        "joins on `Symbol` in one dataset and `stkcd` in another with no canonicalization",
+        "uses `xtset` before resolving mixed identifier names or types",
+        "drops leading-zero firms silently during destringing"
+      ],
+      "forbidden_shortcuts": [
+        "Assume `Symbol`, `stkcd`, and `Scode` are interchangeable without normalization.",
+        "Destring the identifier with no comment about zero-padding risk.",
+        "Leave the canonical field name inconsistent across sources."
+      ],
+      "source_refs": [
+        "references/data_patterns.md",
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": 102,
+      "eval_name": "failure-wrong-append-merge-frame-choice",
+      "mistake_category": "wrong_append_merge_frame_choice",
+      "primary_family": "multi_source_integration",
+      "prompt": "i have ten monthly return files with the same columns plus three auxiliary sources with different variables: annual financials, industry codes, and event dates. i want one 2014-2023 research panel. show me the workflow choice, because i keep mixing up when to append, merge, or use frames.",
+      "expected_output": "The workflow first appends the same-schema monthly return files, then uses frame-based integration for the three distinct auxiliary sources, and explicitly says why merge chains or heterogeneous appends would be wrong here.",
+      "files": [],
+      "expectations": [
+        "Uses `append` for the ten same-schema return files.",
+        "Uses frame workflow or a clearly justified multi-source linking strategy for the three distinct auxiliary sources.",
+        "Distinguishes same-schema consolidation from heterogeneous-source integration in operational terms.",
+        "Documents the choice so a reviewer can tell why each method was used."
+      ],
+      "failure_signals": [
+        "merge chain used to stack the ten monthly return files",
+        "append used to combine financials, industry codes, and event dates into one tall file",
+        "no explanation for why the chosen method matches the data structure"
+      ],
+      "forbidden_shortcuts": [
+        "Use one method for everything just because it is familiar.",
+        "Append heterogeneous sources that should be linked by keys.",
+        "Merge the same-schema monthly files one-by-one instead of appending them first."
+      ],
+      "source_refs": [
+        "references/data_patterns.md"
+      ]
+    },
+    {
+      "id": 103,
+      "eval_name": "failure-fragmented-output-instead-of-consolidated-package",
+      "mistake_category": "missing_consolidated_output",
+      "primary_family": "complete_workflow",
+      "prompt": "my RA needs something handoff-safe, not a pile of partial files. starting from raw CSMAR imports, give me the full stata workflow through indicators, table 1, and baseline regressions, but the final deliverable has to be one consolidated package we can rerun next month.",
+      "expected_output": "The workflow ends in one shared-basename reproducibility spine (`.do + .log + _summary.md`), plus formal outputs such as a saved consolidated analysis dataset and table files, rather than scattered per-step or per-source outputs being treated as the final deliverable.",
+      "files": [],
+      "expectations": [
+        "Produces one top-level `.do`, `.log`, and `_summary.md` evidence spine with a shared basename.",
+        "References one consolidated analysis dataset or final panel inside the workflow.",
+        "Treats `.doc`, `.xlsx`, and `.png` files as formal outputs linked to the evidence spine rather than replacements for it.",
+        "Keeps the end-to-end output coherent enough for a reviewer to rerun."
+      ],
+      "failure_signals": [
+        "separate import, regression, and descriptive snippets with no unified package",
+        "only `regression.doc` or `descriptive.xlsx` returned as if they are the full deliverable",
+        "multiple unrelated basenames with no final consolidated panel"
+      ],
+      "forbidden_shortcuts": [
+        "Stop at intermediate artifacts and call them the final deliverable.",
+        "Leave the sample fragmented across multiple temp outputs with no consolidated panel.",
+        "Return only prose instructions without a rerunnable package."
+      ],
+      "source_refs": [
+        "SKILL.md",
+        "references/analysis_patterns.md"
+      ]
+    },
+    {
+      "id": 104,
+      "eval_name": "failure-unsafe-date-conversion",
+      "mistake_category": "unsafe_date_conversion",
+      "primary_family": "raw_vendor_import",
+      "prompt": "the returns file has trade dates as YMD text like 20200105, the event file has strings like 2020-01-05, and one manually maintained sheet has dates that excel converted weirdly. i need a safe stata workflow that standardizes the dates for a later event study and makes it obvious if any records failed to parse.",
+      "expected_output": "The workflow converts each raw date source with an explicit mask or branch, formats the parsed date, derives year after parsing, and records diagnostics for failed conversions instead of assuming the raw values are safe.",
+      "files": [],
+      "expectations": [
+        "Uses explicit parsing logic appropriate to each raw date format instead of one blind conversion for all inputs.",
+        "Formats the parsed date and derives `year` only after the parsed date exists.",
+        "Includes diagnostics such as `count if missing(parsed_date) & !missing(raw_date)` or an equivalent failed-conversion check.",
+        "Keeps the workflow compatible with later event-date alignment."
+      ],
+      "failure_signals": [
+        "`gen year = substr(raw_date, 1, 4)` used as the main date standardization path",
+        "raw string subtraction or comparison against Stata dates",
+        "no failed-conversion diagnostic despite mixed source formats"
+      ],
+      "forbidden_shortcuts": [
+        "Assume all raw date columns share the same format when the prompt says they do not.",
+        "Extract year from raw text as a substitute for real date conversion.",
+        "Skip missing-conversion diagnostics."
+      ],
+      "source_refs": [
+        "references/data_patterns.md",
+        "references/analysis_patterns.md"
+      ]
+    },
+    {
+      "id": 105,
+      "eval_name": "failure-absent-diagnostics-under-time-pressure",
+      "mistake_category": "absent_diagnostics",
+      "primary_family": "regression_analysis",
+      "prompt": "i'm under deadline, so please give me the fastest version possible for integrating the sample and running the baseline reghdfe model. i still need something safe enough for coauthor review, but keep it lean.",
+      "expected_output": "Even under time pressure, the workflow still includes the minimum diagnostics that keep the analysis trustworthy: key normalization checks, link/merge diagnostics, date-conversion checks where relevant, panel verification, and log capture in the final package.",
+      "files": [],
+      "expectations": [
+        "Keeps essential diagnostics instead of treating 'fastest version' as permission to skip verification.",
+        "Includes whichever diagnostics match the workflow steps used: merge/link checks, duplicate checks, date-parse checks, and panel diagnostics.",
+        "Captures those checks in the `.log` or names them explicitly in the workflow.",
+        "Still emits the unified `.do + .log + _summary.md` evidence spine."
+      ],
+      "failure_signals": [
+        "no `tab _merge`, `frlink` check, duplicate check, `xtdescribe`, or equivalent verification",
+        "no `.log` file or no mention of how diagnostics are preserved",
+        "uses deadline pressure to justify skipping validation entirely"
+      ],
+      "forbidden_shortcuts": [
+        "Interpret deadline pressure as permission to remove all diagnostics.",
+        "Run panel regressions without any panel-structure check.",
+        "Return only the regression command with no verification or handoff package."
+      ],
+      "source_refs": [
+        "references/data_patterns.md",
+        "references/analysis_patterns.md",
+        "SKILL.md"
+      ]
+    },
+    {
+      "id": 106,
+      "eval_name": "failure-hardcoded-monthly-axis-values",
+      "mistake_category": "hardcoded_monthly_axis",
+      "primary_family": "descriptive_reporting",
+      "prompt": "plot monthly ROA trends from 2016 to 2023 with proper axis labels. the data is in monthly format using ym() dates.",
+      "expected_output": "The plotting workflow derives monthly axis tick positions from the actual data range using ym() or tm() functions, formats them with %tm for readable labels, never hard-codes raw monthly integers like 672(12)743, and includes a small synthetic smoke test with concrete monthly anchors plus graph export verification.",
+      "files": [],
+      "expectations": [
+        "Derives x-axis tick positions using ym(year, month) or tm() from actual data min/max, not memorized constants.",
+        "Formats monthly dates with %tm for axis labels.",
+        "Validates tick range against the actual data date range.",
+        "Never uses hard-coded values like xlabel(672(12)743) without derivation from data.",
+        "Provides or references a small synthetic smoke test that asserts a monthly sequence with concrete anchors such as tm(2018m1) and tm(2023m12) or equivalent derived values.",
+        "Verifies the exported graph with `confirm file` or an equivalent Stata-safe check after `graph export`."
+      ],
+      "failure_signals": [
+        "hard-coded monthly integers like `xlabel(672(12)743)` without deriving from actual data range",
+        "axis labels showing wrong years because monthly values were guessed or memorized",
+        "no use of %tm format for monthly date display on axes",
+        "xtick values computed by hand rather than from `summarize ym` or equivalent",
+        "no synthetic smoke test proving the month sequence with explicit monthly anchors",
+        "graph export is shown without `confirm file` or equivalent export verification"
+      ],
+      "forbidden_shortcuts": [
+        "Hard-code monthly axis tick integers from memory or external sources without validating against the dataset.",
+        "Use raw monthly numbers like 672, 684, 696 without explaining their origin.",
+        "Skip the ym() or tm() derivation step when creating monthly charts.",
+        "Assume monthly tick spacing without checking actual data coverage.",
+        "Treat visual inspection alone as sufficient chart acceptance."
+      ],
+      "source_refs": [
+        "references/data_patterns.md",
+        "references/analysis_patterns.md"
+      ]
+    },
+    {
+      "id": 107,
+      "eval_name": "failure-dual-axis-missing-binding",
+      "mistake_category": "dual_axis_missing_binding",
+      "primary_family": "descriptive_reporting",
+      "prompt": "create a dual-axis chart showing monthly stock returns (left axis) and trading volume (right axis) from 2016 to 2023. both series use monthly ym() dates.",
+      "expected_output": "The dual-axis workflow explicitly binds the second series to yaxis(2) with a clear yaxis(2) option, aligns both series on the same monthly date axis using %tm formatting, documents the axis binding choice, and includes a small synthetic smoke test with export verification.",
+      "files": [],
+      "expectations": [
+        "Uses explicit `yaxis(2)` option for the second series in the plot command.",
+        "Aligns both series on the same x-axis with proper monthly date formatting (%tm).",
+        "Documents which variable is bound to which axis.",
+        "Includes axis title labels indicating which variable corresponds to each axis.",
+        "Provides or references a small synthetic smoke test that proves the monthly sequence with concrete anchors such as tm(2018m1) and tm(2023m12).",
+        "Verifies the exported graph with `confirm file` or an equivalent Stata-safe check after `graph export`."
+      ],
+      "failure_signals": [
+        "dual-axis plot with no explicit `yaxis(2)` binding for the second series",
+        "ambiguous axis assignment where it is unclear which variable uses which axis",
+        "missing or inconsistent %tm formatting across the two series",
+        "overlay of two separate twoway commands without proper axis synchronization",
+        "no synthetic smoke test proving month sequence and axis binding",
+        "graph export is shown without `confirm file` or equivalent export verification"
+      ],
+      "forbidden_shortcuts": [
+        "Create a dual-axis chart without explicitly specifying yaxis(2) for the secondary series.",
+        "Overlay two independent plots without ensuring they share the same x-axis scale and format.",
+        "Omit axis labels that clearly distinguish left vs right axis variables.",
+        "Leave the axis binding implicit or unexplained in the code or output.",
+        "Treat visual inspection alone as sufficient chart acceptance."
+      ],
+      "source_refs": [
+        "references/data_patterns.md",
+        "references/analysis_patterns.md"
+      ]
+    }
+  ]
+}

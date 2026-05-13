@@ -1,0 +1,124 @@
+[
+  {
+    "query": "just downloaded the CSMAR 股票收益率 files for 2015-2023, they're in that weird excel format with chinese headers in row 1 and variable codes in row 2. need to import them into stata, clean up the dates (they're in that YMD string format), normalize the stock codes (Stkcd column is called 'Symbol' right now), and get it ready for panel analysis. files are sitting in <DATA_ROOT>/CSMAR/raw/",
+    "should_trigger": true,
+    "family": "raw_vendor_import",
+    "rationale": "CSMAR raw import with date cleaning and Stkcd normalization - core skms workflow"
+  },
+  {
+    "query": "boss sent me wind data exports for 500 firms' financial statements. the stkcd column has leading zeros that got dropped in excel, dates are text format like '2020-12-31', and variable names are those wind codes (wgsd_xyz). need to get this into stata with proper labels, destring the identifiers, convert dates, and standardize the variable names before i can use it.",
+    "should_trigger": true,
+    "family": "raw_vendor_import",
+    "rationale": "Wind data import with identifier normalization and date conversion"
+  },
+  {
+    "query": "working on a project that needs to merge 4 datasets: (1) CSMAR stock returns, (2) company basic info with industry codes, (3) financial statement data for leverage and roa, (4) a hand-collected CSV with ESG scores. thinking frame workflow makes sense here? need to link by stkcd and year, handle the fact that some firms don't have ESG data, and output a balanced panel for 2010-2022.",
+    "should_trigger": true,
+    "family": "multi_source_integration",
+    "rationale": "Multi-source frame workflow with frlink - classic skms integration pattern"
+  },
+  {
+    "query": "have accounting data loaded in stata with total assets, total debt, net income, sales. need to construct the standard financial indicators: leverage (total debt/total assets), ROA (net income/total assets), sales growth (sales - L.sales)/L.sales. also need to winsorize everything at 1% and 99%. this is going into a regression later so want to do it right.",
+    "should_trigger": true,
+    "family": "indicator_construction",
+    "subfamily": "financial_ratios",
+    "rationale": "Financial ratio construction - core indicator construction family"
+  },
+  {
+    "query": "running an event study on comment letter receipt dates. i have the event dates in a separate file, need to match them to daily stock returns, calculate abnormal returns using market-adjusted model, compute CAR for (-2,+2) and (-5,+5) windows, handle non-trading days properly (if event is saturday, go to next trading day), and output mean CAR with t-tests. also need to split by whether it's a first-time or follow-up letter.",
+    "should_trigger": true,
+    "family": "indicator_construction",
+    "subfamily": "event_study_car",
+    "rationale": "Event study / CAR calculation with non-trading day handling - nested under indicator construction"
+  },
+  {
+    "query": "panel dataset is set up with xtset stkcd year. want to run regressions of investment on cash flow, controlling for size and leverage. need firm and year fixed effects, cluster standard errors at firm level. should try a few specs: baseline with just CF, then add controls, then full model with FE. use reghdfe and output everything to outreg2 tables for the paper.",
+    "should_trigger": true,
+    "family": "regression_analysis",
+    "rationale": "Panel regression with reghdfe, fixed effects, clustering - core skms workflow"
+  },
+  {
+    "query": "doing a DID analysis on carbon emission regulations. treatment is whether firm is in a pilot province, post is after 2017. need to set up the interaction term, run baseline OLS then reghdfe with firm and year FE, check parallel trends assumption, and do some robustness with alternative treatment definitions. data is already merged but might need winsorizing.",
+    "should_trigger": true,
+    "family": "regression_analysis",
+    "rationale": "DID regression with parallel trends tests - empirical analysis workflow"
+  },
+  {
+    "query": "need descriptive stats for the full sample and by treatment/control group. want mean, sd, min, p50, max for all my main variables (ROA, leverage, size, investment, cash flow). also need ttable2 to test differences between groups. output should go to excel for the paper's table 1. using logout for this?",
+    "should_trigger": true,
+    "family": "descriptive_reporting",
+    "rationale": "Descriptive statistics with logout and ttable2 - reporting family"
+  },
+  {
+    "query": "building a correlation matrix for my main variables. need the lower triangle with significance stars, output to word or excel so i can put it in the paper. also want some basic graphs: distribution of firm size by industry, time series of average ROA. graphs should be publication quality with proper titles and exported as png.",
+    "should_trigger": true,
+    "family": "descriptive_reporting",
+    "rationale": "Correlation tables and figure export within empirical analysis context"
+  },
+  {
+    "query": "starting from scratch with raw CSMAR exports. need to: (1) import 3 separate files (returns, accounting, company info), (2) integrate them using frame workflow or merge, (3) construct financial ratios and policy dummies, (4) run descriptive stats by year and industry, (5) do panel regressions with FE and output tables. basically the full pipeline for a corporate finance paper. can you walk me through the stata code?",
+    "should_trigger": true,
+    "family": "complete_workflow",
+    "rationale": "End-to-end workflow combining all 5 task families"
+  },
+  {
+    "query": "can you explain what p-values mean in regression output? my advisor keeps asking about significance levels but i don't really understand the difference between 1%, 5%, and 10% thresholds or when to use two-tailed vs one-tailed tests. also what's the intuition behind t-stats?",
+    "should_trigger": false,
+    "family": "conceptual_statistics",
+    "rationale": "Pure conceptual statistics question - explicitly excluded by skms boundaries"
+  },
+  {
+    "query": "need help writing a stata loop that goes through all excel files in a folder, does some processing, and saves results. not for research data, just cleaning up some administrative spreadsheets with employee records. want to automate the formatting.",
+    "should_trigger": false,
+    "family": "generic_programming",
+    "rationale": "Generic programming task without empirical research context"
+  },
+  {
+    "query": "want to create a really nice looking dashboard with interactive charts showing our company's quarterly sales trends. needs to be something i can present to the board. thinking something in python with plotly or maybe tableau? data is in a SQL database.",
+    "should_trigger": false,
+    "family": "data_visualization_no_empirical",
+    "rationale": "Data visualization without empirical analysis context, plus non-Stata language"
+  },
+  {
+    "query": "working on a machine learning project in python. have a pandas dataframe with stock returns and some features, want to train a random forest to predict next-day returns. need help with feature engineering, train/test split, and model evaluation. using sklearn.",
+    "should_trigger": false,
+    "family": "non_stata_language",
+    "rationale": "Python ML workflow - explicitly excluded by skms boundaries"
+  },
+  {
+    "query": "trying to figure out how to use the fixest package in R for high-dimensional fixed effects. the documentation is confusing about how to specify multiple FEs and clustering. also what's the difference between fixed_effects syntax in fixest vs lfe package?",
+    "should_trigger": false,
+    "family": "non_stata_language",
+    "rationale": "R econometrics package help - non-Stata workflow"
+  },
+  {
+    "query": "reading a paper that uses GMM estimation for dynamic panel models. can you explain the intuition behind why they need the moment conditions and how the Blundell-Bond estimator differs from Arellano-Bond? this is for my econometrics comprehensive exam prep.",
+    "should_trigger": false,
+    "family": "theoretical_econometrics",
+    "rationale": "Theoretical econometrics without data processing - explicitly excluded"
+  },
+  {
+    "query": "need to convert a SAS data step to python. currently reads a raw text file with fixed-width columns, applies informats for dates and currencies, and outputs a sas7bdat. want to do the same in pandas but not sure how to handle the informats equivalent.",
+    "should_trigger": false,
+    "family": "non_stata_language",
+    "rationale": "SAS and Python - non-Stata workflow"
+  },
+  {
+    "query": "help me write an excel formula that looks up a value from another sheet based on multiple criteria. tried vlookup but it only does one condition, need something like index-match with two conditions. this is for a financial model i'm building.",
+    "should_trigger": false,
+    "family": "non_stata_language",
+    "rationale": "Excel help - not a Stata empirical workflow"
+  },
+  {
+    "query": "designing a survey experiment for my dissertation. need advice on randomization strategy, power calculations for treatment effects, and how many waves to run. also wondering about attrition mitigation strategies. this is still in design phase, no data yet.",
+    "should_trigger": false,
+    "family": "conceptual_research_design",
+    "rationale": "Research design without data processing - skms requires empirical workflow"
+  },
+  {
+    "query": "how do i write a for loop in stata that increments by 2 instead of 1? want to iterate over variables x1, x3, x5, etc. and do some calculation. this is a general programming question about stata syntax.",
+    "should_trigger": false,
+    "family": "generic_stata_help",
+    "rationale": "Generic Stata syntax help without empirical research context"
+  }
+]

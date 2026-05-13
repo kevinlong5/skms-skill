@@ -1,0 +1,4 @@
+interface:
+  display_name: "SKMS"
+  short_description: "Empirical Stata workflows for imports, panel data, and regressions"
+  default_prompt: "Use the skms skill for empirical Stata work, including CSMAR or Wind imports, panel-data cleaning, merges, indicator construction, event studies, reghdfe regressions, and reporting."

@@ -1,0 +1,11 @@
+.DS_Store
+*.log
+*.smcl
+*.dta
+*.csv
+*.xls
+*.xlsx
+*.doc
+*.docx
+*.png
+*.pdf
